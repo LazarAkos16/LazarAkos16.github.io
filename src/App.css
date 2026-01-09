@@ -25,7 +25,7 @@
 .main-content {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-columns: 1fr;
   gap: 2rem;
   padding: 2rem;
   max-width: 1400px;
@@ -53,10 +53,28 @@
 
 .viz-container {
   flex: 1;
-  min-height: 300px;
+  min-height: 500px;
   padding: 1rem;
   background-color: #fafafa;
   border-radius: 4px;
+}
+
+/* Reduce padding for pie chart container to prevent clipping and allow labels to show */
+.viz-section:nth-child(3) .viz-container {
+  padding: 0.25rem;
+  overflow: visible;
+}
+
+.recharts-wrapper:focus,
+.recharts-surface:focus {
+  outline: none;
+}
+
+.recharts-pie-sector path:focus,
+.recharts-pie-sector path:active,
+.recharts-sector:focus,
+.recharts-sector:active {
+  outline: none;
 }
 
 @media (max-width: 768px) {

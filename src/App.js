@@ -55,6 +55,20 @@ function App() {
             )}
           </div>
         </section>
+        <section className="viz-section">
+          <h2>Number of Vehicles Sold per Brand</h2>
+          <div className="viz-container">
+            {error ? (
+              <div style={{ color: 'red' }}>Error: {error}</div>
+            ) : loading ? (
+              <div>Loading data...</div>
+            ) : data.length > 0 ? (
+              <SimpleChart data={data} chartType="sales" />
+            ) : (
+              <div>No data available</div>
+            )}
+          </div>
+        </section>
       </main>
     </div>
   );

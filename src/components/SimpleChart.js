@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   LineChart,
   Line,
@@ -6,6 +6,7 @@ import {
   Bar,
   PieChart,
   Pie,
+  Sector,
   Cell,
   XAxis,
   YAxis,
@@ -15,11 +16,70 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
+const RADIAN = Math.PI / 180;
+
+const renderActiveSlice = (props) => {
+  const {
+    cx,
+    cy,
+    innerRadius,
+    outerRadius,
+    startAngle,
+    endAngle,
+    fill,
+    midAngle,
+    payload
+  } = props;
+
+  const sin = Math.sin(-RADIAN * midAngle);
+  const cos = Math.cos(-RADIAN * midAngle);
+  const sx = cx + (outerRadius + 10) * cos;
+  const sy = cy + (outerRadius + 10) * sin;
+  const mx = cx + (outerRadius + 25) * cos;
+  const my = cy + (outerRadius + 25) * sin;
+  const ex = mx + (cos >= 0 ? 1 : -1) * 25;
+  const ey = my;
+  const textAnchor = cos >= 0 ? 'start' : 'end';
+
+  return (
+    <g>
+      <Sector
+        cx={cx}
+        cy={cy}
+        innerRadius={innerRadius}
+        outerRadius={outerRadius + 12}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        fill={fill}
+      />
+      <Sector
+        cx={cx}
+        cy={cy}
+        innerRadius={outerRadius + 14}
+        outerRadius={outerRadius + 20}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        fill={fill}
+        opacity={0.3}
+      />
+      <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" />
+      <circle cx={ex} cy={ey} r={4} fill={fill} stroke="none" />
+      <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} textAnchor={textAnchor} fill="#333">
+        {payload.name}
+      </text>
+    </g>
+  );
+};
+
 /**
  * SimpleChart - Visualization component for Australian Vehicle Prices data
  * Shows different chart types based on CSV data
  */
 function SimpleChart({ data, chartType = 'bar' }) {
+  const [activeIndex, setActiveIndex] = useState(null);
+  const handlePieClick = (_, index) => {
+    setActiveIndex((prev) => (prev === index ? null : index));
+  };
   if (!data || data.length === 0) {
     return <div>No data to display</div>;
   }
@@ -106,6 +166,26 @@ function SimpleChart({ data, chartType = 'bar' }) {
       }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 8); // Top 8 body types
+
+  } else if (chartType === 'sales') {
+    // Bar chart: Number of vehicles sold per Brand
+    const brandCounts = {};
+    
+    data.forEach(row => {
+      const brand = row.Brand || 'Unknown';
+      if (brand && brand.trim() !== '' && brand !== 'Unknown') {
+        brandCounts[brand] = (brandCounts[brand] || 0) + 1;
+      }
+    });
+
+    chartData = Object.entries(brandCounts)
+      .map(([brand, count]) => ({
+        name: brand,
+        value: count
+      }))
+      .filter(item => item.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 15); // Top 15 brands by sales count
   }
 
   const colors = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82CA9D', '#FFC658', '#FF7C7C'];
@@ -122,7 +202,7 @@ function SimpleChart({ data, chartType = 'bar' }) {
   switch (chartType) {
     case 'line':
       return (
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={500}>
           <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
@@ -152,7 +232,7 @@ function SimpleChart({ data, chartType = 'bar' }) {
 
     case 'bar':
       return (
-        <ResponsiveContainer width="100%" height={300}>
+        <ResponsiveContainer width="100%" height={500}>
           <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 60 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis 
@@ -181,37 +261,58 @@ function SimpleChart({ data, chartType = 'bar' }) {
         </ResponsiveContainer>
       );
 
-    case 'pie':
-      return (
-        <ResponsiveContainer width="100%" height={300}>
-          <PieChart>
-            <Pie
-              data={chartData}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              label={({ name, percent }) => {
-                // Show name and percentage, but only if percentage is significant
-                if (percent < 0.05) return '';
-                return `${name}: ${(percent * 100).toFixed(1)}%`;
-              }}
-              outerRadius={100}
-              fill="#8884d8"
-              dataKey="value"
-              nameKey="name"
-            >
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-              ))}
-            </Pie>
-            <Tooltip 
-              formatter={(value, name) => [`${value} vehicles`, name]}
-            />
-            <Legend />
-          </PieChart>
-        </ResponsiveContainer>
-      );
+      case 'pie':
+        return (
+          <ResponsiveContainer width="100%" height={500}>
+            <PieChart margin={{ top: 40, right: 80, bottom: 40, left: 80 }}>
+              <Pie
+                data={chartData}
+                cx="50%"
+                cy="50%"
+                label={({ name, percent }) => {
+                  if (percent < 0.01) return '';
+                  return `${name}: ${(percent * 100).toFixed(1)}%`;
+                }}
+                labelLine={{ stroke: '#666', strokeWidth: 1 }}
+                outerRadius={120}
+                fill="#8884d8"
+                dataKey="value"
+                nameKey="name"
+              >
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                ))}
+              </Pie>
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        );
 
+      case 'sales':
+        return (
+          <ResponsiveContainer width="100%" height={500}>
+            <BarChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 60 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="name" 
+                angle={-45}
+                textAnchor="end"
+                height={100}
+              />
+              <YAxis />
+              <Tooltip 
+                formatter={(value) => [`${value} vehicles`, 'Number of Vehicles']}
+              />
+              <Legend />
+              <Bar 
+                dataKey="value" 
+                fill="#00C49F"
+                name="Number of Vehicles"
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        );
+      
     default:
       return <div>Unknown chart type: {chartType}</div>;
   }
